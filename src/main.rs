@@ -1,7 +1,11 @@
 use ecolor::Color32;
-use eframe::egui::{self, load::TexturePoll, Event, TextureHandle, Vec2};
-use egui_plot::{Legend, Line, Plot, PlotImage, PlotPoint, PlotPoints};
-use std::sync::Mutex;
+use eframe::egui::{
+    self, load::TexturePoll, ColorImage, Event, ImageData, TextureHandle, TextureOptions, Vec2,
+};
+use egui_plot::{Legend, Plot, PlotImage, PlotPoint};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
@@ -19,19 +23,37 @@ fn main() -> eframe::Result {
     )
 }
 
+fn simulate_robot(display_texture: Arc<Mutex<TextureHandle>>) {
+    loop {
+        thread::sleep(Duration::from_millis(1));
+    }
+}
+
+#[derive(Default)]
 struct MyApp {
-    screen_texture: Mutex<TextureHandle>,
+    screen_texture: Option<Arc<Mutex<TextureHandle>>>,
 }
 
 impl MyApp {
+    #[allow(dead_code)]
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let screen_texture = cc.egui_ctx.load_texture(
+        let screen_texture = Arc::new(Mutex::new(cc.egui_ctx.load_texture(
             "screen",
             ImageData::Color(Arc::new(ColorImage::new([100, 100], Color32::TRANSPARENT))),
             TextureOptions::default(),
-        );
+        )));
 
-        Self { screen_texture }
+        print!("Hello World");
+
+        let thread_texture = screen_texture.clone();
+
+        thread::spawn(|| {
+            simulate_robot(thread_texture);
+        });
+
+        Self {
+            screen_texture: Some(screen_texture),
+        }
     }
 }
 
