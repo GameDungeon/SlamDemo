@@ -1,58 +1,61 @@
 {
   inputs = {
-    flake-utils.url = "github:numtide/flake-utils";
-    rust-overlay.url = "github:oxalica/rust-overlay";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-
-    rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    cargo-v5.url = "github:vexide/cargo-v5";
+    utils.url = "github:numtide/flake-utils";
   };
-
   outputs =
     {
+      self,
       nixpkgs,
-      flake-utils,
       rust-overlay,
-      ...
+      utils,
+      cargo-v5,
     }:
-
-    (flake-utils.lib.eachDefaultSystem (
+    utils.lib.eachDefaultSystem (
       system:
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs { inherit system overlays; };
-        libPath =
-          with pkgs;
-          lib.makeLibraryPath [
-            libGL
-            libxkbcommon
-            wayland
-          ];
+        cargo-v5' = cargo-v5.packages.${system}.default;
       in
       {
-        devShell = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            (rust-bin.nightly.latest.default.override {
-              extensions = [
-                "rust-src"
-                "rust-analyzer"
-                "clippy"
-              ];
+        devShell =
+          with pkgs;
+          mkShell {
+            buildInputs = [
+              # Python
+              (python3.withPackages (
+                python-pkgs: with python-pkgs; [
+                  nicegui
+                  plotly
+                  websockets
+                  pyserial
+                  numpy
+                ]
+              ))
 
-              targets = [
-                "x86_64-unknown-linux-gnu"
-                "wasm32-unknown-unknown"
-              ];
-            })
+              cargo-v5'
+              pkgs.cargo-binutils
+              (pkgs.rust-bin.nightly."2025-01-01".default.override {
+                extensions = [
+                  "rust-analyzer"
+                  "rust-src"
+                  "clippy"
+                  "llvm-tools"
+                ];
+              })
 
-            pkg-config
-            fontconfig
-            wayland
+              pkg-config
+              fontconfig
 
-            trunk
-          ];
+              sxiv
 
-          LD_LIBRARY_PATH = libPath;
-        };
+              arduino-ide
+              arduino
+            ];
+          };
       }
-    ));
+    );
 }
